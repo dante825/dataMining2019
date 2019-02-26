@@ -1,4 +1,3 @@
-
 from PySide import QtCore, QtGui, QtWebKit
 from lxml import html
 import sys
