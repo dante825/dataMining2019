@@ -10,62 +10,57 @@ CREATE_STOCKS_LINK_SQL = '''CREATE TABLE Stocks_link (
     );
 '''
 
+
 class DbOperations:
     def __init__(self):
         self.conn = sqlite3.connect(DB_LOCATION)
 
     def create_table(self, drop_script, create_script):
         """
-        Create a table based on the SQL script provided
-        :param sqlScript: SQL script to create table
+        Create a database table
+        :param drop_script: drop the table if exists
+        :param create_script: sql script to create the table
         :return: void
         """
-        # conn = sqlite3.connect(DB_LOCATION)
         cur = self.conn.cursor()
         cur.execute(drop_script)
         cur.execute(create_script)
-        # conn.commit()
-        # conn.close()
 
     def insert_symlink(self, symbol, link, sector):
         """
-        Insert a row of stock symbol, url link, sector and subsector into the db
-        :param conn: db connection
-        :param stockList: the cleaned list of stocks
+        Insert a record into the stocks_link table
+        :param symbol: stock symbol
+        :param link: the link to the stock page
+        :param sector: sector of the stock
         :return: void
         """
-        # conn = sqlite3.connect(DB_LOCATION)
         cur = self.conn.cursor()
         cur.execute(INSERT_LINK_SQL, (symbol, link, sector))
-        # conn.commit()
-        # conn.close()
 
     def view_symlink(self):
         """
         View the content of the stock symbol table
         :return: void
         """
-        # conn = sqlite3.connect(DB_LOCATION)
         cur = self.conn.cursor()
         cur.execute('''SELECT * FROM Stocks_link''')
         result = cur.fetchall()
         print(result)
-        # conn.commit()
-        # conn.close()
 
     def clear_symlink(self):
         """
         Clear all the content of the table
         :return: void
         """
-        # conn = sqlite3.connect(DB_LOCATION)
         cur = self.conn.cursor()
         # TRUNCATE TABLE Stocks_link
         cur.execute('''DELETE FROM Stocks_link''')
-        # conn.commit()
-        # conn.close()
 
     def close_conn(self):
+        """
+        Commit and close the database connection
+        :return: void
+        """
         self.conn.commit()
         self.conn.close()
 
