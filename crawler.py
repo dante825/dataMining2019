@@ -1,10 +1,14 @@
 from lxml import html
 import requests
+from DbOperations import *
+from DbOperations import VIEW_STOCKS_LINK
+import logging
 
+# Setup the log level
+logging.basicConfig(level=logging.DEBUG)
 
 class AppCrawler:
     def __init__(self, depth):
-        # self.starting_url = starting_url
         self.depth = depth
         self.apps = []
 
@@ -16,6 +20,7 @@ class AppCrawler:
         tree = html.fromstring(start_page.text)
 
         date = tree.xpath('//*[@id="slcontent_0_ileft_0_datetxt"]/text()')[0]
+        time = tree.xpath('//*[@id="slcontent_0_ileft_0_timetxt"]/text()')[0]
         name = tree.xpath('//h1[@class="stock-profile f16"]/text()')[0]
         open_price = tree.xpath('//td[@id="slcontent_0_ileft_0_opentext"]/text()')[0]
         high = tree.xpath('//td[@id="slcontent_0_ileft_0_hightext"]/text()')[0]
@@ -26,13 +31,14 @@ class AppCrawler:
         buy_vol = tree.xpath('//*[@id="slcontent_0_ileft_0_buyvol"]/text()')[0]
         sell_vol = tree.xpath('//*[@id="slcontent_0_ileft_0_sellvol"]/text()')[0]
 
-        stock = Stock(date[10: -2], name, code[3:], open_price, high, low, close, vol, buy_vol, sell_vol)
+        stock = Stock(date[10: -2], time, name, code[3:], open_price, high, low, close, vol, buy_vol, sell_vol)
         return stock
 
 
 class Stock:
-    def __init__(self, date, name, code, open, high, low, close, vol, buy_vol, sell_vol):
+    def __init__(self, date, time, name, code, open, high, low, close, vol, buy_vol, sell_vol):
         self.date = date
+        self.time = time
         self.name = name
         self.code = code
         self.open = open
@@ -44,17 +50,33 @@ class Stock:
         self.sell_vol = sell_vol
 
     def __str__(self):
-        return "Stock: " + str(self.name) + "\n" + "Stock Code: " + str(self.code) + "\n" + "Open: " + \
-               str(self.open) + "\n" + "High: " + str(self.high) + "\n" + "Low: " + str(self.low) + "\n" + \
-               "Close: " + str(self.close) + "\n" + "Volume: " + str(self.vol) + "\n" + "Buy vol: " + \
-               str(self.buy_vol) + "\n" + "Sell vol: " + str(self.sell_vol) + "\n" + "Date: " + str(self.date) + "\n"
+        return "Stock: " + str(self.name).strip() + "\n" + "Stock Code: " + str(self.code).strip() + "\n" + \
+               "Open: " + str(self.open).strip() + "\n" + "High: " + str(self.high).strip() + "\n" + "Low: " + \
+               str(self.low).strip() + "\n" + "Close: " + str(self.close).strip() + "\n" + "Volume: " + \
+               str(self.vol).strip() + "\n" + "Buy vol: " + str(self.buy_vol).strip() + "\n" + "Sell vol: " + \
+               str(self.sell_vol).strip() + "\n" + "Date: " + str(self.date).strip() + "\n" + "Time: " + \
+               str(self.time).strip() + "\n"
 
 
-urls = ['https://www.thestar.com.my/business/marketwatch/stocks/?qcounter=ALAM',
-        'https://www.thestar.com.my/Business/Marketwatch/Stocks?qcounter=RSENA',
-        'https://www.thestar.com.my/Business/Marketwatch/Stocks?qcounter=CLIQ']
+def clean_dash_num(dash_string):
+    if dash_string == '-':
+        return 0
+    else:
+        return dash_string
 
-crawler = AppCrawler(0)
-for url in urls:
-    s = crawler.crawl(url)
-    print(s.__str__())
+
+def main():
+    crawler = AppCrawler(0)
+    db_op = DbOperations()
+    stocks_sym = db_op.view_table(VIEW_STOCKS_LINK)
+
+    for details in stocks_sym:
+        s = crawler.crawl(details[1])
+        logging.info('Scraping %s', details[1])
+        db_op.insert_stocks(s.date, s.time, s.name, s.code, clean_dash_num(s.open), clean_dash_num(s.high), clean_dash_num(s.low),
+                            clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
+    db_op.close_conn()
+
+
+if __name__ == '__main__':
+    main()
