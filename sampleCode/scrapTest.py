@@ -1,76 +1,82 @@
-# This works but when in loop, the second link cannot be rendered
-# import bs4 as bs
-import sys
-import urllib.request
-from PyQt5.QtWebEngineWidgets import QWebEnginePage
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QUrl
 from lxml import html
+import requests
 
-APP = QApplication(sys.argv)
+class AppCrawler:
+    def __init__(self, depth):
+        self.depth = depth
+        self.apps = []
+
+    def crawl(self, url_param):
+        return self.get_app_from_link(url_param)
+
+    def get_app_from_link(self, link):
+        start_page = requests.get(link)
+        tree = html.fromstring(start_page.text)
+
+        try:
+            date = tree.xpath('//*[@id="slcontent_0_ileft_0_datetxt"]/text()')[0]
+            time = tree.xpath('//*[@id="slcontent_0_ileft_0_timetxt"]/text()')[0]
+            name = tree.xpath('//h1[@class="stock-profile f16"]/text()')[0]
+            open_price = tree.xpath('//td[@id="slcontent_0_ileft_0_opentext"]/text()')[0]
+            high = tree.xpath('//td[@id="slcontent_0_ileft_0_hightext"]/text()')[0]
+            low = tree.xpath('//td[@id="slcontent_0_ileft_0_lowtext"]/text()')[0]
+            close = tree.xpath('//td[@id="slcontent_0_ileft_0_lastdonetext"]/text()')[0]
+            code = tree.xpath('//li[@class="f14"]/text()')[1]
+            vol = tree.xpath('//*[@id="slcontent_0_ileft_0_voltext"]/text()')[0]
+            buy_vol = tree.xpath('//*[@id="slcontent_0_ileft_0_buyvol"]/text()')[0]
+            sell_vol = tree.xpath('//*[@id="slcontent_0_ileft_0_sellvol"]/text()')[0]
+
+            stock = Stock(date[10: -2], time, name, code[3:], open_price, high, low, close, vol, buy_vol, sell_vol)
+            return stock
+        except IndexError:
+            return None
 
 
-class Page(QWebEnginePage):
-    # def __init__(self):
-    #     self.web_engine = QWebEnginePage.__init__(self)
-
-    def __init__(self, url):
-        self.app = QApplication.instance()
-        QWebEnginePage.__init__(self)
-        self.html = ''
-        self.loadFinished.connect(self._on_load_finished)
-        self.load(QUrl(url))
-        self.app.exec_()
-
-    # def render(self, url):
-    #     self.app = QApplication.instance()
-    #     self.load(QUrl(url))
-    #     self.app.exec_()
 
 
-    def _on_load_finished(self):
-        self.html = self.toHtml(self.Callable)
-        print('Load finished')
+class Stock:
+    def __init__(self, date, time, name, code, open, high, low, close, vol, buy_vol, sell_vol):
+        self.date = date
+        self.time = time
+        self.name = name
+        self.code = code
+        self.open = open
+        self.high = high
+        self.low = low
+        self.close = close
+        self.vol = vol
+        self.buy_vol = buy_vol
+        self.sell_vol = sell_vol
 
-    def Callable(self, html_str):
-        self.html = html_str
-        self.app.quit()
+    def __str__(self):
+        return "Stock: " + str(self.name).strip() + "\n" + "Stock Code: " + str(self.code).strip() + "\n" + \
+               "Open: " + str(self.open).strip() + "\n" + "High: " + str(self.high).strip() + "\n" + "Low: " + \
+               str(self.low).strip() + "\n" + "Close: " + str(self.close).strip() + "\n" + "Volume: " + \
+               str(self.vol).strip() + "\n" + "Buy vol: " + str(self.buy_vol).strip() + "\n" + "Sell vol: " + \
+               str(self.sell_vol).strip() + "\n" + "Date: " + str(self.date).strip() + "\n" + "Time: " + \
+               str(self.time).strip() + "\n"
+
+
+def clean_dash_num(dash_string):
+    if dash_string == '-':
+        return 0
+    else:
+        return dash_string
 
 
 def main():
-    # page = Page()
-    urls = ['https://www.thestar.com.my/business/marketwatch/stock-list/?sector=main_energy',
-            'https://www.thestar.com.my/business/marketwatch/stock-list/?sector=main_healthcare']
-    for url in urls:
-        print(url)
-        page = Page(url)
-        # page_html = page.render(url)
-        # print(page_html)
-        formatted_result = str(page.html.encode('UTF-8'))
-        # print(len(formatted_result))
-        # print(formatted_result)
-        pageTree = html.fromstring(formatted_result)
-        # Now using correct xpath we are fetching the URLs of the archive
-        rawStocks = pageTree.xpath('//tbody/tr[@class="linedlist"]/td//text()')
-        # print(rawStocks)
-        rawStocks = rawStocks[:rawStocks.index('VSTECS')]
-        rawStocks = rawStocks[:int(len(rawStocks) / 2)]
-        rawLinks = pageTree.xpath('//tr[@class="linedlist"]/td/a/@href')
+    crawler = AppCrawler(0)
+    listOfStocks = ['https://www.thestar.com.my/business/marketwatch/stocks/?qcounter=TATGIAP',
+                    'https://www.thestar.com.my/business/marketwatch/stocks/?qcounter=RUBEREX']
 
-        # logging.info('Extracted symbols and links')
-        cleanStocks = []
-        for i in range(0, len(rawStocks)):
-            if i % 8 == 0:
-                cleanStocks.append(rawStocks[i])
-
-        cleanLinks = rawLinks[:len(cleanStocks)]
-        print(cleanStocks)
-        print(cleanLinks)
-        print(len(cleanStocks))
-
-        # soup = bs.BeautifulSoup(page.html, 'html.parser')
-        # js_test = soup.find('p', class_='jstest')
-        # print js_test.text
+    for stock in listOfStocks:
+        s = crawler.crawl(stock)
+        if s is None:
+            print('link invalid')
+        else:
+            print(s.__str__())
 
 
-if __name__ == '__main__': main()
+
+if __name__ == '__main__':
+    main()
