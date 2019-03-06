@@ -5,7 +5,8 @@ from DbOperations import VIEW_STOCKS_LINK
 import logging
 
 # Setup the log level
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+
 
 class AppCrawler:
     def __init__(self, depth):
@@ -15,7 +16,7 @@ class AppCrawler:
     def crawl(self, url_param):
         return self.get_app_from_link(url_param)
 
-	def get_app_from_link(self, link):
+    def get_app_from_link(self, link):
         start_page = requests.get(link)
         tree = html.fromstring(start_page.text)
 
@@ -81,7 +82,7 @@ def main():
         else:
             db_op.insert_stocks(s.date, s.time, s.name, s.code, clean_dash_num(s.open), clean_dash_num(s.high),
                                 clean_dash_num(s.low), clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
-    db_op.close_conn()    
+    db_op.close_conn()
 
 
 if __name__ == '__main__':
