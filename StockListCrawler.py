@@ -5,10 +5,10 @@ from DbOperations import *
 import logging
 
 # Setup the log level
-logging.basicConfig(level = logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # The first of the dividend on the side table on the website, a point to subset the stocks
-STOP_POINT = 'VSTECS'
+STOP_POINT = 'METROD'
 
 # Hardcoded sector and links
 SECTOR_LINK = {
@@ -51,13 +51,12 @@ def clean_stocks(stocks_list):
     :param stocks_list: extracted list of stocks
     :return: a clean list of stocks
     """
-    logging.info('Cleansing the stocks')
-    cleanStocks = []
+    cleansed_stocks = []
     for i in range(0, len(stocks_list)):
         if i % 8 == 0:
-            cleanStocks.append(stocks_list[i])
+            cleansed_stocks.append(stocks_list[i])
 
-    return cleanStocks
+    return cleansed_stocks
 
 
 def clean_links(links_list, length):
@@ -67,12 +66,12 @@ def clean_links(links_list, length):
     :param length: the length of the clean stock list
     :return: a clean list of links
     """
-    logging.info('Cleansing the links')
     cleanLinks = links_list[:length]
     return cleanLinks
 
 
 def main():
+    db_op = DbOperations()
     # Loop the dictionary to crawl the list of stocks
     for sector, url in SECTOR_LINK.items():
         logging.info('Extracting %s with %s', sector, url)
@@ -91,11 +90,9 @@ def main():
         stocks_list = clean_stocks(raw_stocks)
         stocks_link = clean_links(raw_links, len(stocks_list))
 
-        logging.info('Inserting into Database table')
-        db_op = DbOperations()
         for sym, page_link in zip(stocks_list, stocks_link):
             db_op.insert_symlink(sym, PREFIX_URL + page_link, sector)
-        db_op.close_conn()
+    db_op.close_conn()
 
 
 if __name__ == '__main__':
