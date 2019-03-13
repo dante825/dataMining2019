@@ -1,7 +1,7 @@
 from lxml import html
 import requests
 from DbOperations import *
-from DbOperations import VIEW_STOCKS_LINK
+from DbOperations import VIEW_COMPANY_DETAILS
 import logging
 
 # Setup the log level
@@ -63,6 +63,11 @@ class Stock:
 
 
 def clean_dash_num(dash_string):
+    """
+    Handle the NA value which is in '-'
+    :param dash_string: possible dash or number
+    :return: 0 or the original number
+    """
     if dash_string == '-':
         return 0
     else:
@@ -72,16 +77,16 @@ def clean_dash_num(dash_string):
 def main():
     crawler = AppCrawler(0)
     db_op = DbOperations()
-    stocks_sym = db_op.view_table(VIEW_STOCKS_LINK)
+    stocks_sym = db_op.view_table(VIEW_COMPANY_DETAILS)
 
     for details in stocks_sym:
-        s = crawler.crawl(details[1])
-        logging.info('Scraping %s', details[1])
+        s = crawler.crawl(details[3])
+        logging.info('Scraping %s', details[3])
         if s is None:
             logging.info('Link Invalid. Skipped.')
         else:
-            db_op.insert_stocks(s.date, s.time, s.name, s.code, clean_dash_num(s.open), clean_dash_num(s.high),
-                                clean_dash_num(s.low), clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
+            db_op.insert_stock_prices(s.date, s.time, s.code, clean_dash_num(s.open), clean_dash_num(s.high),
+                                      clean_dash_num(s.low), clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
     db_op.close_conn()
 
 
