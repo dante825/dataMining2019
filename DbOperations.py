@@ -2,6 +2,7 @@ import psycopg2
 from configparser import ConfigParser
 import locale
 import logging
+import re
 
 # Setup the log level
 logging.basicConfig(level=logging.INFO)
@@ -9,34 +10,63 @@ logging.basicConfig(level=logging.INFO)
 locale.setlocale( locale.LC_ALL, 'en_US.UTF-8' )
 
 INSERT_LINK_SQL = '''INSERT INTO Stocks_link (symbol, link, sector) VALUES (%s,%s,%s);'''
-INSERT_STOCK = '''INSERT INTO stocks (date, time, stock_code, stock_name, open, high, low, close, vol, buy_vol, 
-        sell_vol) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) '''
-VIEW_STOCKS_LINK = '''SELECT * FROM Stocks_link;'''
-VIEW_STOCKS = '''SELECT * FROM Stocks;'''
-TRUNCATE_STOCKS_LINK = '''TRUNCATE TABLE stocks_link;'''
-TRUNCATE_STOCKS = '''TRUNCATE TABLE stocks;'''
-DROP_STOCKS_LINK_TABLE = '''DROP TABLE IF EXISTS stocks_link;'''
-DROP_STOCKS_TABLE = '''DROP TABLE IF EXISTS stocks;'''
-CREATE_STOCKS_LINK_SQL = '''CREATE TABLE stocks_link (
-    symbol TEXT NOT NULL PRIMARY KEY,
-    link TEXT,
-    sector TEXT
+INSERT_STOCK_PRICES = '''INSERT INTO stock_prices (date, time, stock_code, open, high, low, close, vol, buy_vol, 
+        sell_vol) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) '''
+INSERT_FINANCIAL = '''INSERT INTO financial_results (stock_code, date_announced, financial_year_end, quarter, 
+        period_end, revenue, profit_loss, eps) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'''
+INSERT_COMPANY = '''INSERT INTO company_details (stock_code, stock_symbol, company_name, url, sector) VALUES (
+                    %s, %s, %s, %s, %s);'''
+VIEW_STOCK_LINK = '''SELECT * FROM stocks_link;'''
+VIEW_COMPANY_DETAILS = '''SELECT * FROM company_details;'''
+VIEW_STOCK_PRICES = '''SELECT * FROM stock_prices;'''
+VIEW_FINANCIAL = '''SELECT * FROM financial_results;'''
+# TRUNCATE_COMPANY_DETAILS = '''TRUNCATE TABLE company_details RESTART IDENTITY;'''
+# TRUNCATE_STOCKS_PRICES = '''TRUNCATE TABLE stock_prices RESTART IDENTITY;'''
+# TRUNCATE_FINANCIAL = '''TRUNCATE TABLE financial_results RESTART IDENTITY;'''
+CREATE_STOCKS_LINK_TABLE = '''DROP TABLE IF EXISTS stock_link;
+    CREATE TABLE stock_link (
+        symbol TEXT NOT NULL PRIMARY KEY,
+        link TEXT,
+        sector TEXT
+        );
+'''
+CREATE_COMPANY_DETAILS_TABLE = '''DROP TABLE IF EXISTS company_details;
+    CREATE TABLE company_details (
+        stock_code TEXT PRIMARY KEY,
+        stock_symbol TEXT,
+        company_name TEXT,
+        url TEXT,
+        sector TEXT
     );
 '''
-CREATE_STOCKS_TABLE = '''CREATE TABLE stocks (
-    date DATE NOT NULL,
-    time TIME NOT NULL,
-    stock_code TEXT NOT NULL,
-    stock_name TEXT,
-    open FLOAT(3),
-    high FLOAT(3),
-    low FLOAT(3),
-    close FLOAT(3),
-    vol INTEGER,
-    buy_vol TEXT,
-    sell_vol TEXT,
-    PRIMARY KEY (date, time, stock_code)
-    );    
+CREATE_STOCK_PRICES_TABLE = '''DROP TABLE IF EXISTS stock_prices;
+    CREATE TABLE stock_prices (
+        stock_price_id SERIAL, 
+        date DATE NOT NULL,
+        time TIME NOT NULL,
+        stock_code TEXT NOT NULL,
+        open FLOAT(3),
+        high FLOAT(3),
+        low FLOAT(3),
+        close FLOAT(3),
+        vol INTEGER,
+        buy_vol TEXT,
+        sell_vol TEXT,
+        PRIMARY KEY (date, time, stock_code)
+        );  
+'''
+CREATE_FINANCIAL_TABLE = '''DROP TABLE IF EXISTS financial_results;
+    CREATE TABLE financial_results (
+        financial_id SERIAL PRIMARY KEY,
+        stock_code TEXT,
+        date_announced DATE,
+        financial_year_end DATE,
+        quarter INTEGER,
+        period_end DATE,
+        revenue NUMERIC,
+        profit_loss NUMERIC,
+        eps FLOAT(2)
+        );
 '''
 
 
@@ -60,15 +90,13 @@ class DbOperations:
         logging.info('Connecting to database...')
         self.conn = psycopg2.connect(**db)
 
-    def create_table(self, drop_script, create_script):
+    def create_table(self, create_script):
         """
         Create a database table
-        :param drop_script: drop the table if exists
         :param create_script: sql script to create the table
         :return: void
         """
         cur = self.conn.cursor()
-        cur.execute(drop_script)
         cur.execute(create_script)
 
     def insert_symlink(self, symbol, link, sector):
@@ -82,12 +110,11 @@ class DbOperations:
         cur = self.conn.cursor()
         cur.execute(INSERT_LINK_SQL, (symbol, link, sector))
 
-    def insert_stocks(self, date, time, code, name, open, high, low, close, vol, buy_vol, sell_vol):
+    def insert_stock_prices(self, date, time, code, open, high, low, close, vol, buy_vol, sell_vol):
         """
         Inserting a stock details into stock table
         :param date: date last updated
         :param time: time last updated
-        :param name: company name
         :param code: the code of the company in KLSE
         :param open: the opening price of the stock on that day
         :param high: the highest price of the stock on that day
@@ -100,11 +127,38 @@ class DbOperations:
         """
         cur = self.conn.cursor()
         try:
-            cur.execute(INSERT_STOCK, (date, time, code, name, open, high, low, close, clean_volume(vol), buy_vol, sell_vol))
+            cur.execute(INSERT_STOCK_PRICES, (date, time, code, open, high, low, close, clean_comma_num(vol),
+                                              buy_vol, sell_vol))
             self.conn.commit()
         except psycopg2.IntegrityError as e:
-            logging.error('Record {0}, {1}, {2}, {3} already exists.'.format(date, time, code, name))
+            logging.error('Record {0}, {1}, {2} already exists.'.format(date, time, code))
             self.conn.rollback()
+
+    def insert_financial(self, code, financial):
+        """
+        Insert the financial results into database
+        :param code: the stock code
+        :param financial: a list that contains the financial results
+        :return:
+        """
+        cur = self.conn.cursor()
+        try:
+            cur.execute(INSERT_FINANCIAL, (code, financial[0], financial[1], financial[2], financial[3],
+                                           clean_comma_num(financial[4]), clean_comma_num(financial[5]), financial[6]))
+            self.conn.commit()
+        except (ValueError, IndexError) as e:
+            logging.error('The record may have some empty values. Skipped.')
+            self.conn.rollback()
+
+    def insert_company(self, code, sym, name, link, sector):
+        cur = self.conn.cursor()
+        try:
+            cur.execute(INSERT_COMPANY, (code, sym, name, link, sector))
+            self.conn.commit()
+        except psycopg2.IntegrityError as e:
+            logging.error('Record {0} already exists'.format(code))
+            self.conn.rollback()
+
 
     def view_table(self, select_script):
         """
@@ -136,11 +190,18 @@ class DbOperations:
         self.conn.close()
 
 
-def clean_volume(numstr):
+def clean_comma_num(numstr):
     if type(numstr) is int:
         return numstr
     else:
         return locale.atoi(numstr)
+
+
+def is_it_code(code, name):
+    if re.match('^\d', code) and len(code) < 7:
+        return code
+    else:
+        return name
 
 
 def main():
@@ -148,6 +209,7 @@ def main():
     # Create tables
     # db_op.create_table(DROP_STOCKS_LINK_TABLE, CREATE_STOCKS_LINK_SQL)
     # db_op.create_table(DROP_STOCKS_TABLE, CREATE_STOCKS_TABLE)
+    # db_op.create_table(CREATE_FINANCIAL_TABLE)
 
     # Record inserting test
     # db_op.insert_symlink('sapura2', 'star/business/sapura', 'sector')
@@ -155,15 +217,15 @@ def main():
     #                     '0.101 / 125', '0.111 / 153')
 
     # Truncate the table
-    # db_op.clear_table(TRUNCATE_STOCKS_LINK)
+    # db_op.clear_table(TRUNCATE_FINANCIAL)
     # db_op.clear_table(TRUNCATE_STOCKS)
 
     # Viewing the records in the table
-    records = db_op.view_table(VIEW_STOCKS)
+    # records = db_op.view_table(VIEW_STOCKS)
     # records = db_op.view_table(VIEW_STOCKS_LINK)
-    print(len(records))
-    for record in records:
-        print(record)
+    # print(len(records))
+    # for record in records:
+    #     print(record)
     db_op.close_conn()
 
 
