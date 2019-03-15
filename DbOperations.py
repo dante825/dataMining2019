@@ -16,10 +16,13 @@ INSERT_FINANCIAL = '''INSERT INTO financial_results (stock_code, date_announced,
         period_end, revenue, profit_loss, eps) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'''
 INSERT_COMPANY = '''INSERT INTO company_details (stock_code, stock_symbol, company_name, url, sector) VALUES (
                     %s, %s, %s, %s, %s);'''
+INSERT_DIVIDEND = '''INSERT INTO stock_dividend (stock_code, date_announced, to_registered, paid_on, dividend, 
+                     ex_dates) VALUES (%s, %s, %s, %s, %s, %s);'''
 VIEW_STOCK_LINK = '''SELECT * FROM stocks_link;'''
 VIEW_COMPANY_DETAILS = '''SELECT * FROM company_details;'''
 VIEW_STOCK_PRICES = '''SELECT * FROM stock_prices;'''
 VIEW_FINANCIAL = '''SELECT * FROM financial_results;'''
+VIEW_DIVIDEND = '''SELECT * FROM stock_dividend;'''
 # TRUNCATE_COMPANY_DETAILS = '''TRUNCATE TABLE company_details RESTART IDENTITY;'''
 # TRUNCATE_STOCKS_PRICES = '''TRUNCATE TABLE stock_prices RESTART IDENTITY;'''
 # TRUNCATE_FINANCIAL = '''TRUNCATE TABLE financial_results RESTART IDENTITY;'''
@@ -67,6 +70,17 @@ CREATE_FINANCIAL_TABLE = '''DROP TABLE IF EXISTS financial_results;
         profit_loss NUMERIC,
         eps FLOAT(2)
         );
+'''
+CREATE_DIVIDEND_TABLE = '''DROP TABLE IF EXISTS stock_dividend;
+    CREATE TABLE stock_dividend (
+        dividend_id SERIAL PRIMARY KEY,
+        stock_code TEXT,
+        date_announced DATE,
+        to_registered DATE,
+        paid_on DATE,
+        dividend TEXT,
+        ex_dates DATE
+    );
 '''
 
 
@@ -159,6 +173,15 @@ class DbOperations:
             logging.error('Record {0} already exists'.format(code))
             self.conn.rollback()
 
+    def insert_dividend(self, code, dividend):
+        """
+        Insert dividend information into database table
+        :param code: stock code
+        :param dividend: a list that contains the dividend information
+        :return:
+        """
+        cur = self.conn.cursor()
+        cur.execute(INSERT_DIVIDEND, (code, dividend[0], dividend[1], dividend[2], dividend[3], dividend[4]))
 
     def view_table(self, select_script):
         """
