@@ -18,11 +18,14 @@ INSERT_COMPANY = '''INSERT INTO company_details (stock_code, stock_symbol, compa
                     %s, %s, %s, %s, %s);'''
 INSERT_DIVIDEND = '''INSERT INTO stock_dividend (stock_code, date_announced, to_registered, paid_on, dividend, 
                      ex_dates) VALUES (%s, %s, %s, %s, %s, %s);'''
+INSERT_SHARE_BUYBACK = '''INSERT INTO share_buyback (stock_code, buyback_date, shares_acquired, price_range, 
+                           total_amount_paid, total_treasure_share) VALUES (%s, %s, %s, %s, %s, %s);'''
 VIEW_STOCK_LINK = '''SELECT * FROM stocks_link;'''
 VIEW_COMPANY_DETAILS = '''SELECT * FROM company_details;'''
 VIEW_STOCK_PRICES = '''SELECT * FROM stock_prices;'''
 VIEW_FINANCIAL = '''SELECT * FROM financial_results;'''
 VIEW_DIVIDEND = '''SELECT * FROM stock_dividend;'''
+VIEW_SHARE_BUYBACL = '''SELECT * FROM share_buyback;'''
 # TRUNCATE_COMPANY_DETAILS = '''TRUNCATE TABLE company_details RESTART IDENTITY;'''
 # TRUNCATE_STOCKS_PRICES = '''TRUNCATE TABLE stock_prices RESTART IDENTITY;'''
 # TRUNCATE_FINANCIAL = '''TRUNCATE TABLE financial_results RESTART IDENTITY;'''
@@ -82,7 +85,17 @@ CREATE_DIVIDEND_TABLE = '''DROP TABLE IF EXISTS stock_dividend;
         ex_dates DATE
     );
 '''
-
+CREATE_SHARE_BUYBACK_TABLE='''DROP TABLE IF EXISTS share_buyback;
+    CREATE TABLE share_buyback (
+        share_buyback_id SERIAL PRIMARY KEY,
+        stock_code TEXT,
+        buyback_date DATE,
+        shares_acquired NUMERIC,
+        price_range NUMERIC,
+        total_amount_paid NUMERIC,
+        total_treasure_share NUMERIC
+    );
+'''
 
 class DbOperations:
     def __init__(self, configfile='database.ini', section='postgresql'):
@@ -183,6 +196,18 @@ class DbOperations:
         cur = self.conn.cursor()
         cur.execute(INSERT_DIVIDEND, (code, dividend[0], dividend[1], dividend[2], dividend[3], dividend[4]))
 
+    def insert_share_buyback(self, code, buyback):
+        """
+        Insert share buyback information into database table
+        :param code: stock_code
+        :param buyback: a list that contain the buyback information
+        :return:
+        """
+        cur = self.conn.cursor()
+        cur.execute(INSERT_SHARE_BUYBACK, (code, dash_str(buyback[0]), str_to_float(dash_str(buyback[1], 0)),
+                                           dash_str(buyback[2], 0), str_to_float(dash_str(buyback[3], 0)),
+                                           str_to_float(dash_str(buyback[4], 0))))
+
     def view_table(self, select_script):
         """
         View the content of a table
@@ -218,6 +243,30 @@ def clean_comma_num(numstr):
         return numstr
     else:
         return locale.atoi(numstr)
+
+
+def str_to_float(str):
+    """
+    Change number in string to float. Remove the comma and convert to float
+    :param str: number in string
+    :return: float
+    """
+    num = re.sub(',', '', str)
+    return float(num)
+
+
+def dash_str(dash_str, is_date = 1):
+    """
+    If the date is '-', handle this kind of NA
+    :param date_str: possible dash or date
+    :return:
+    """
+    if dash_str == '-' and is_date == 1:
+        return '1 Jan 2001'
+    elif dash_str == '-' and is_date == 0:
+        return '0'
+    else:
+        return dash_str
 
 
 def is_it_code(code, name):
