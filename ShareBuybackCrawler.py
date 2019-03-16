@@ -51,7 +51,7 @@ def main():
                 db_op.insert_share_buyback(details[0], info)
     db_op.close_conn()
     end_time = time.time()
-    print('Elapsed time: {:.2f}'.format((end_time - start_time) / 60))
+    print('Elapsed time: {:.2f} minutes'.format((end_time - start_time) / 60))
 
 
 if __name__ == '__main__':

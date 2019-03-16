@@ -91,7 +91,7 @@ def main():
                                       clean_dash_num(s.low), clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
     db_op.close_conn()
     end_time = time.time()
-    print('Elapsed time: {:.2f}'.format((end_time - start_time) / 60))
+    print('Elapsed time: {:.2f} minutes'.format((end_time - start_time) / 60))
 
 
 if __name__ == '__main__':
