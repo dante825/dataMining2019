@@ -3,6 +3,7 @@ import requests
 from DbOperations import *
 from DbOperations import VIEW_COMPANY_DETAILS
 import logging
+import time
 
 # Setup the log level
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +76,7 @@ def clean_dash_num(dash_string):
 
 
 def main():
+    start_time = time.time()
     crawler = AppCrawler(0)
     db_op = DbOperations()
     stocks_sym = db_op.view_table(VIEW_COMPANY_DETAILS)
@@ -88,6 +90,8 @@ def main():
             db_op.insert_stock_prices(s.date, s.time, s.code, clean_dash_num(s.open), clean_dash_num(s.high),
                                       clean_dash_num(s.low), clean_dash_num(s.close), s.vol, s.buy_vol, s.sell_vol)
     db_op.close_conn()
+    end_time = time.time()
+    print('Elapsed time: {:.2f}'.format((end_time - start_time) / 60))
 
 
 if __name__ == '__main__':

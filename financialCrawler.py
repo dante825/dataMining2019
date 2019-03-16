@@ -2,6 +2,7 @@ from lxml import html
 import requests
 from DbOperations import *
 import logging
+import time
 
 # Setup the log level
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +53,7 @@ def split_financial_list(list_string):
 
 
 def main():
+    start_time = time.time()
     crawler = AppCrawler(0)
     db_op = DbOperations()
     list_of_stocks = db_op.view_table(VIEW_COMPANY_DETAILS)
@@ -66,6 +68,9 @@ def main():
             for f in financial:
                 db_op.insert_financial(details[0], f)
 
+    db_op.close_conn()
+    end_time = time.time()
+    print('Elapsed time: {:.2f}'.format((end_time - start_time) / 60))
 
 if __name__ == '__main__':
     main()
