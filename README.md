@@ -1,5 +1,7 @@
 # Data Mining Project 2019 
 This repository is created for Data Mining course in Master of Data Science
+## Name: Ng Kang Wei
+## Student ID: WQD170068
 
 # Content
 1. Code for crawling the stock data from the web
