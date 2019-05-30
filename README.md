@@ -1,17 +1,16 @@
-# icedTeaSpider
-A spider loves iced tea. This project is to build a web for the spider to catch more iced tea.
+# Data Mining Project 2019 
+This repository is created for Data Mining course in Master of Data Science
 
-# Tools
-1. SQLite for DB
-2. Python
+# Content
+1. Code for crawling the stock data from the web
+2. A SAS project that fulfill each of the milestones
+3. The crawled data is stored
+4. The reports for each milestones
 
-# Tasks
-1. Crawl or scrap the list of stocks in Bursa Malaysia Main Market (799)
-2. Keep this list in a table in the DB.
-3. Crawl the stock on the list one by one.
-4. Store the result into a table in the DB.
-
-# Schema for the tables
-1. [stock code, sector, subsector, ...]
-2. [stock code, opening, closing, high, low, ...]
-3. [stock code, stock name]
+# Youtube link to the milestones video presentation
+1. https://youtu.be/F7a2RSeJjWs
+2. https://youtu.be/veRR8RlvpMQ
+3. https://youtu.be/9VzZzI56TxE
+4. https://youtu.be/a0alaGTWEfY
+5. https://youtu.be/oLSD_SEunQ0
+6. https://youtu.be/yX1MHcYAilQ
